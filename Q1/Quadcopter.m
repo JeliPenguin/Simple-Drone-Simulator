@@ -31,16 +31,7 @@ classdef Quadcopter < handle
         % you can modify this to model quadcopter physics
         function update(obj,pos,rot)
         % function update(obj,t)
-
-            % % dummy position update
-            % obj.pos = [0;0;0]+[2.6*sin(t/2);2.1*cos(t/5);(2.4*sin(t/3)*sin(t/3))];
-            % 
-            % % dummy orientation update
-            % pitch = 0.3*sin(t*15.2);
-            % roll = 0.1*cos(t*33.1 + 0.5);
-            % yaw = 2.*pi*sin(t);
-            % obj.rot = [yaw;roll;pitch];  
-
+            pos(3) = max(pos(3),0);
             obj.pos = pos;
             obj.rot = rot;
         end
