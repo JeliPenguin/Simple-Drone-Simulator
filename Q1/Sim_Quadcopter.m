@@ -15,7 +15,7 @@ ax1 = axes;
 hold(ax1,'on');
 view(ax1, 3);
 axis('equal')
-axis([-5 5 -5 5 0 5])
+axis([-5 5 -5 5 0 10])
 axis('manual')
 xlabel('x');
 ylabel('y');
@@ -30,16 +30,15 @@ ax1.Interactions = [];
 drone1 = Quadcopter(ax1);
 % 
 % % 1. In equilibrium:
-% input = [0.735,0.735,0.735,0.735];
+input = [0.735,0.735,0.735,0.735];
 
 % % 2. Free Falling
 % input = zeros(4,1);
 
 % 3. Rotation at constant altitude
-fst = 0.1;
-snd = 1.47 - fst;
-input = [snd,fst,snd,fst];
-% input=[0.1,0.5,0.2,2.14];
+% fst = 0.1;
+% snd = 1.47 - fst;
+% input = [snd,fst,snd,fst];
 
 m = 0.3;
 g = 9.8;
@@ -48,8 +47,8 @@ k = 1;
 L = 0.25;
 b = 0.2;
 I = [1,0,0;0,1,0;0,0,0.4];
-p = [0;0;2];
-pdot = zeros(3,1);
+p = [0;0;9];
+pdot = [0;0;-10];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
 
@@ -106,7 +105,6 @@ function a = acceleration(inputs,angles,xdot,m,g,k,kd)
     R = rotation(angles);
     T = R*thrust(inputs,k);
     Fd = -kd*xdot;
-    disp([T,Fd])
     a = gravity+T/m+Fd/m;
 end
 
