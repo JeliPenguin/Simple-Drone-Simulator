@@ -1,3 +1,4 @@
+dt = 0.1;
 m = 0.3;
 g = 9.8;
 kd = 0.2;
@@ -34,19 +35,21 @@ C = eye(12);
 D = zeros(size(B));
 cont_sys = ss(A,B,C,D);
 disc_sys = c2d(cont_sys,dt,'zoh');
-assert(rank(ctrb(disc_sys.A,disc_sys.B))==12) % Assert controllability of the system
+A = disc_sys.A;
+B = disc_sys.B;
+assert(rank(ctrb(A,B))==12) % Assert controllability of the system
 
-% eigenvalues =[0.02,0.03,0.04,0.1,0.2,0.3,0.4,0.5,0.6,0.75,0.8,0.9];
-eigenvalues = [-0.3485
-    0.4962
-   -0.1631
-   -0.4108
-    0.1759
-    0.1652
-    0.4437
-    0.2183
-    0.3343
-    0.0388
-   -0.4217
-   -0.3079];
-K = place(disc_sys.A,disc_sys.B,eigenvalues);
+eigenvalues = [
+    0.8
+    0.75
+    0.76
+    0.74
+    0.62
+    0.63
+    0.44
+    0.71
+    0.73
+    0.72
+    0.81
+    0.7];
+K = place(A,B,eigenvalues);

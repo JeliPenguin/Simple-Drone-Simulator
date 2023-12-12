@@ -4,7 +4,7 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 20;
+TOTAL_TIME  = 100;
 dt          = 0.1;
 TIME_SCALE  = 1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
@@ -15,7 +15,7 @@ ax1 = axes;
 hold(ax1,'on');
 view(ax1, 3);
 axis('equal')
-axis([-5 5 -5 5 0 5])
+axis([-5 5 -5 5 0 10])
 axis('manual')
 xlabel('x');
 ylabel('y');
@@ -30,51 +30,104 @@ ax1.Interactions = [];
 drone1 = Quadcopter(ax1);
 fsf()
 
-m = 0.3;
-g = 9.8;
-kd = 0.2;
-k = 1;
-L = 0.25;
-b = 0.2;
-I = [1,0,0;0,1,0;0,0,0.4];
-p = [0;0;0];
-pdot = [0;0;0];
-theta=zeros(3,1);
-thetadot = zeros(3,1);
+% m = 0.3;
+% g = 9.8;
+% kd = 0.2;
+% k = 1;
+% L = 0.25;
+% b = 0.2;
+% I = [1,0,0;0,1,0;0,0,0.4];
+% p = [0;0;0];
+% pdot = [0;0;0];
+% theta=zeros(3,1);
+% thetadot = zeros(3,1);
+
 x = [0;0;0;0;0;0;0;0;0;0;0;0];
-ref = [0;0;1;0;0;0;0;0;0;0;0;0];
+stageNum = 1;
+stages = [
+    0,0,5,0,0,0,0,0,0,0,0,0
+    0,2.5,5,0,0,0,0,0,0,0,0,0
+    genCircCheckpoints(10)
+    2.5,2.5,2.5,0,0,0,0,0,0,0,0,0
+    2.5,2.5,0,0,0,0,0,0,0,0,0,0
+];
+
+errorThresh = 0.001;
+holdTime = 0;
+elapseStart = 0;
+firstTime = true;
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
     tic
     cla
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
-    
+
+    ref = transpose(stages(stageNum,:));
     % FSF controller
-    u = K*(x-ref);
-    disp(x-ref)
-    u = min(max(u,1.5),1.5);
+    u = -K*(x-ref);
+    % u = min(max(u,-1.5),1.5);
+    % disp(transpose(u))
     x = (A-B*K)*x+B*K*ref;
+    disp(transpose(x))
+    if arrivedReference(x,ref,errorThresh)
+        if stageNum == 1
+            holdTime = 5;
+            if firstTime
+                elapseStart = t;
+                firstTime = false;
+            end
+            if (t-elapseStart) >= holdTime
+                stageNum=min(stageNum+1,height(stages));
+            end
+        else
+            stageNum=min(stageNum+1,height(stages));
+        end
+        
+    end
+    % disp(u)
 
     % Drone simulation
-    omega = thetadot2omega(thetadot,theta);
-    a = acceleration(u,theta,pdot,m,g,k,kd);
-    omegadot = angular_acceleration(u,omega,I,L,b,k);
-    omega = omega+dt*omegadot;
-    thetadot=omega2thetadot(omega,theta);
-    theta=theta+dt*thetadot;
-    pdot=pdot+dt*a;
-    p=p+dt*pdot;
-    omegaFlip=flip(omega);
-    disp(p)
+    % omega = thetadot2omega(thetadot,theta);
+    % a = acceleration(u,theta,pdot,m,g,k,kd);
+    % omegadot = angular_acceleration(u,omega,I,L,b,k);
+    % omega = omega+dt*omegadot;
+    % thetadot=omega2thetadot(omega,theta);
+    % theta=theta+dt*thetadot;
+    % pdot=pdot+dt*a;
+    % p=p+dt*pdot;
+    % omegaFlip=flip(omega);
+    % drone1.update(p,omegaFlip);
 
-    drone1.update(p,omegaFlip);
+    drone1.update([x(1),x(2),x(3)],[x(12),x(11),x(10)]);
     drone1.plot;
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
 
     drawnow nocallbacks limitrate
     pause(TIME_SCALE*dt-toc); 
+end
+
+function arrived = arrivedReference(x,ref,errorThresh)
+    arrived = all(abs(x-ref)<errorThresh);
+end
+
+function intermediateCheckpoints = genIntermediateCheckPoints(startState,endState,numPoints)
+    
+end
+
+function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
+    check1 = [0,2.5,5,0,0,0,0,0,0,0,0,0];
+    check2 = [0,0,7.5,0,0,0,0,0,0,0,0,0];
+    check3 = [0,-2.5,5,0,0,0,0,0,0,0,0,0];
+    check4 = [0,0,2.5,0,0,0,0,0,0,0,0,0];
+    circCheckpoints = [check1
+                       genIntermediateCheckPoints(check1,check2,numPointsPerQuad)
+                       check2
+                       genIntermediateCheckPoints(check2,check3,numPointsPerQuad)
+                       check3
+                       genIntermediateCheckPoints(check3,check4,numPointsPerQuad)
+                       check4];
 end
 
 function T = thrust(inputs,k)
