@@ -39,17 +39,33 @@ A = disc_sys.A;
 B = disc_sys.B;
 assert(rank(ctrb(A,B))==12) % Assert controllability of the system
 
+% eigenvalues = [
+%     0.8
+%     0.75
+%     0.76
+%     0.74
+%     0.62
+%     0.63
+%     0.44
+%     0.71
+%     0.73
+%     0.72
+%     0.81
+%     0.7]; % Works pretty well
+
 eigenvalues = [
-    0.8
+    0.7
     0.75
     0.76
     0.74
     0.62
     0.63
-    0.44
+    0.64
     0.71
     0.73
     0.72
-    0.81
-    0.7];
+    0.51
+    0.5];
+
+% eigenvalues = rand(12,1)-1/2;
 K = place(A,B,eigenvalues);

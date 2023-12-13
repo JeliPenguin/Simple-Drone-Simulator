@@ -65,7 +65,7 @@ classdef Quadcopter < handle
                 s = surf(obj.ax,X,Y,Z);
                 set(s,'edgecolor','none','facecolor',obj.colours(i+1,:));
             end            
-            
+
         end
     end
 end

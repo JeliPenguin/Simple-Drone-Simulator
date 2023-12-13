@@ -4,7 +4,7 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 100;
+TOTAL_TIME  = 200;
 dt          = 0.1;
 TIME_SCALE  = 1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
@@ -13,7 +13,8 @@ TIME_SCALE  = 1; % slows down simulation if > 1, speeds up if < 1 (and if comput
 figure;
 ax1 = axes;
 hold(ax1,'on');
-view(ax1, 3);
+% view(ax1, 3);
+view(90,0); % for viewing YZ plane
 axis('equal')
 axis([-5 5 -5 5 0 10])
 axis('manual')
@@ -46,16 +47,15 @@ x = [0;0;0;0;0;0;0;0;0;0;0;0];
 stageNum = 1;
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
-    0,2.5,5,0,0,0,0,0,0,0,0,0
     genCircCheckpoints(10)
     2.5,2.5,2.5,0,0,0,0,0,0,0,0,0
     2.5,2.5,0,0,0,0,0,0,0,0,0,0
 ];
-
-errorThresh = 0.001;
+errorThresh = 0.1;
 holdTime = 0;
 elapseStart = 0;
 firstTime = true;
+prev = x;
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
     tic
@@ -64,11 +64,14 @@ for t = 0:dt:TOTAL_TIME
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
     ref = transpose(stages(stageNum,:));
+    % disp(transpose(ref))
     % FSF controller
     u = -K*(x-ref);
     % u = min(max(u,-1.5),1.5);
     % disp(transpose(u))
+    prev = x;
     x = (A-B*K)*x+B*K*ref;
+    % disp(calcSpeed(prev,x));
     disp(transpose(x))
     if arrivedReference(x,ref,errorThresh)
         if stageNum == 1
@@ -108,12 +111,33 @@ for t = 0:dt:TOTAL_TIME
     pause(TIME_SCALE*dt-toc); 
 end
 
+function speed=calcSpeed(prev,now)
+    speed = sqrt(sum((now(1:1:3)-prev(1:1:3)).^2));
+end
+
 function arrived = arrivedReference(x,ref,errorThresh)
-    arrived = all(abs(x-ref)<errorThresh);
+    arrived = all((x-ref).^2<errorThresh);
+end
+
+function yCirc = getYFromX(x,neg)
+    if neg
+        yCirc = sqrt(2.5^2-x^2)+5;
+    else
+        yCirc = -sqrt(2.5^2-x^2)+5;
+    end
+    
 end
 
 function intermediateCheckpoints = genIntermediateCheckPoints(startState,endState,numPoints)
-    
+    diffX = (endState(2)-startState(2));
+    step = diffX/(numPoints+1);
+    intermediateCheckpoints = [];
+    for xCirc = startState(2)+step:step:endState(2)-step
+        yCirc = getYFromX(xCirc,step<0);
+        newCheckpoint = [0,xCirc,yCirc,0,0,0,0,0,0,0,0,0];
+        intermediateCheckpoints = [intermediateCheckpoints;newCheckpoint];
+    end
+
 end
 
 function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
@@ -121,13 +145,18 @@ function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
     check2 = [0,0,7.5,0,0,0,0,0,0,0,0,0];
     check3 = [0,-2.5,5,0,0,0,0,0,0,0,0,0];
     check4 = [0,0,2.5,0,0,0,0,0,0,0,0,0];
+    check5 = [0,2.5,5,0,0,0,0,0,0,0,0,0];
     circCheckpoints = [check1
                        genIntermediateCheckPoints(check1,check2,numPointsPerQuad)
                        check2
                        genIntermediateCheckPoints(check2,check3,numPointsPerQuad)
                        check3
                        genIntermediateCheckPoints(check3,check4,numPointsPerQuad)
-                       check4];
+                       check4
+                       genIntermediateCheckPoints(check4,check5,numPointsPerQuad)
+                       check5
+                       ];
+    disp(circCheckpoints)
 end
 
 function T = thrust(inputs,k)

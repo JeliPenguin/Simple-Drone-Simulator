@@ -62,8 +62,13 @@ Aj = subs(Aj,[phi,theta,psi,wx,wy,wz,gamma1,gamma2,gamma3,gamma4],[0,0,0,0,0,0,o
 A = double(Aj);
 Bj = subs(Bj,[phi,theta,psi],[0,0,0]);
 B = double(Bj);
-
-x = [0;0;9;0;0;0;0;0;0;0;0;0];
+% C = eye(12);
+% D = zeros(size(B));
+% cont_sys = ss(A,B,C,D);
+% disc_sys = c2d(cont_sys,dt,'zoh');
+% A = disc_sys.A;
+% B = disc_sys.B;
+x = [0;0;3;0;0;0;0;0;0;0;0;0];
 u = zeros(4,1);
 
 % Run Simulation
@@ -73,10 +78,11 @@ for t = 0:dt:TOTAL_TIME
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
-    xdot = A*x+B*u;
-    x = x + dt*xdot;
+    % xdot = A*x+B*u;
+    % x = x + dt*xdot;
+    x = expm(A*dt)*x;
     p = [x(1),x(2),x(3)];
-    disp(xdot(3))
+    disp(p)
     omega = [x(12),x(11),x(10)];
 
     drone1.update(p,omega);
