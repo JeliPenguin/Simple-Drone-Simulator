@@ -70,6 +70,12 @@ eigenvalues = [
 % eigenvalues = rand(12,1)-1/2;
 % K = place(A,B,eigenvalues);
 
-Q=5;
-R=10;
+Q=eye(12)*10;
+Q(4,4) = 100;
+Q(5,5) = 100;
+Q(6,6) = 100;
+% Q(10,10)=50;
+% Q(11,11)=50;
+% Q(12,12)=50;
+R=5;
 K=dlqr(A,B,Q,R);

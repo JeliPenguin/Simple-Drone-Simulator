@@ -4,9 +4,9 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 200;
+TOTAL_TIME  = 500;
 dt          = 0.1;
-TIME_SCALE  = 1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
+TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
 
 % Initialise plot
@@ -29,7 +29,17 @@ ax1.Interactions = [];
 
 % Initialise Simulation
 drone1 = Quadcopter(ax1);
+
+%Observability
+C = eye(12);
+C(4,4)=0;
+C(5,5)=0;
+C(6,6)=0;
+C(7,7)=0;
+C(8,8)=0;
+C(9,9)=0;
 fsf()
+state_observer()
 
 % Drone physics constants
 m = 0.3;
@@ -45,18 +55,20 @@ p = [0;0;0];
 pdot = [0;0;0];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
-x = [0;0;0;0;0;0;0;0;0;0;0;0];
+x = zeros(12,1);
+xhat = zeros(12,1);
+simx = zeros(12,1);
 operatingGamma = 0.735;
 
 % Reference control
 stageNum = 1;
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
-    genCircCheckpoints(20)
+    genCircCheckpoints(5)
     2.5,2.5,2.5,0,0,0,0,0,0,0,0,0
     2.5,2.5,0,0,0,0,0,0,0,0,0,0
 ];
-errorThresh = 0.001;
+ref = stages(1,:);
 holdTime = 0;
 elapseStart = 0;
 firstTime = true;
@@ -69,12 +81,12 @@ for t = 0:dt:TOTAL_TIME
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
-    ref = transpose(stages(stageNum,:));
-
-    % FSF controller
-    u = (operatingGamma+K*(x-ref));
-    prev = x;
-    x = (A-B*K)*x+B*K*ref;
+    if stageNum <= 2 || stageNum >= height(stages)-2
+        errorThresh = 0.0001;
+    else
+        % CIrcle trajectory
+        errorThresh = 0.01;
+    end
 
     % Adjust references
     if arrivedReference(x,ref,errorThresh)
@@ -93,6 +105,26 @@ for t = 0:dt:TOTAL_TIME
         
     end
 
+    ref = transpose(stages(stageNum,:));
+
+    % Add noise
+    x = x+rand(size(x)); % noisy measurement
+
+    % FSF controller
+    u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
+    disp(transpose(u))
+
+    % Switch off quadcopter when completed all stages
+    if stageNum >= height(stages)
+        u = zeros(4,1);
+    end
+
+    %Observer
+    
+
+
+    % disp(calcSpeed(prev,x,dt))
+
     % Drone physics simulation
     omega = thetadot2omega(thetadot,theta);
     a = acceleration(u,theta,pdot,m,g,k,kd);
@@ -101,12 +133,17 @@ for t = 0:dt:TOTAL_TIME
     thetadot=omega2thetadot(omega,theta);
     theta=theta+dt*thetadot;
     pdot=pdot+dt*a;
-    p = [x(1);x(2);x(3)];
-    disp(p)
     p=p+dt*pdot;
-    omegaFlip=flip(omega);
-    drone1.update(p,omegaFlip);
+    if p(3) <= 0
+        p(3) = 0;
+        pdot(3) = 0;
+        omega = zeros(3,1);
+        theta = zeros(3,1);
+    end
+    x = [p(1);p(2);p(3);pdot(1);pdot(2);pdot(3);omega(1);omega(2);omega(3);theta(1);theta(2);theta(3)];
+    rot=flip(theta);
 
+    drone1.update(p,rot);
     drone1.plot;
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
@@ -115,8 +152,9 @@ for t = 0:dt:TOTAL_TIME
     pause(TIME_SCALE*dt-toc); 
 end
 
-function speed=calcSpeed(prev,now)
-    speed = sqrt(sum((now(1:1:3)-prev(1:1:3)).^2));
+function speed=calcSpeed(prev,now,dt)
+    s = (now(1:1:3)-prev(1:1:3))/dt;
+    speed = sqrt(sum(s.^2));
 end
 
 function arrived = arrivedReference(x,ref,errorThresh)
@@ -160,7 +198,7 @@ function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
                        genIntermediateCheckPoints(check4,check5,numPointsPerQuad)
                        check5
                        ];
-    disp(circCheckpoints)
+    % disp(circCheckpoints)
 end
 
 function T = thrust(inputs,k)
@@ -194,10 +232,6 @@ end
 function omegadot = angular_acceleration(inputs,omega,I,L,b,k)
     tau = torques(inputs,L,b,k);
     omegadot = inv(I)*(tau-cross(omega,I*omega));
-    % Ixx = I(1,1);
-    % Iyy = I(2,2);
-    % Izz = I(3,3);
-    % omegadot = [tau(1)/Ixx;tau(2)/Iyy;tau(3)/Izz] - [(Iyy-Izz)*omega(2)*omega(3)/Ixx;(Izz-Ixx)*omega(1)*omega(3)/Iyy;(Ixx-Iyy)*omega(1)*omega(2)/Izz];
 end
 
 function thetadot=omega2thetadot(omega,angle)
