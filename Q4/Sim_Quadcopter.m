@@ -106,13 +106,20 @@ for t = 0:dt:TOTAL_TIME
     end
 
     ref = transpose(stages(stageNum,:));
+    
 
-    % Add noise
-    x = x+rand(size(x)); % noisy measurement
+    % Add Measurement noise
+    y = C*x;
+    measurementNoise = rand(size(y));
+    y = y + measurementNoise;
 
     % FSF controller
     u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
     disp(transpose(u))
+
+    % Add signal noise ???
+    signalNoise = rand(size(u));
+    u = u+signalNoise;
 
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
