@@ -54,7 +54,7 @@ stageNum = 1;
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
     genCircCheckpoints(5)
-    genLineCheckpoints()
+    genLineCheckpoints(-0.1,dt)
 ];
 
 ref = stages(1,:);
@@ -165,13 +165,13 @@ function intermediateCheckpoints = genIntermediateCheckPoints(startState,endStat
 
 end
 
-function lineCheckpoints = genLineCheckpoints()
+function lineCheckpoints = genLineCheckpoints(velocity,dt)
     lineCheckpoints = [2.5,2.5,2.5,0,0,0,0,0,0,0,0,0];
     startPoint = 2.5;
     endPoint = 0;
-    step=-0.01;
+    step=velocity*dt;
     for i=startPoint+step:step:endPoint-step
-        newPoint = [2.5,2.5,i,0,0,-0.1,0,0,0,0,0,0];
+        newPoint = [2.5,2.5,i,0,0,velocity,0,0,0,0,0,0];
         lineCheckpoints = [lineCheckpoints;newPoint];
     end
     lineCheckpoints = [lineCheckpoints;[2.5,2.5,0,0,0,0,0,0,0,0,0,0]];
