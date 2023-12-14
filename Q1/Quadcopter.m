@@ -30,7 +30,6 @@ classdef Quadcopter < handle
         
         % you can modify this to model quadcopter physics
         function update(obj,pos,rot)
-        % function update(obj,t)
             obj.pos = pos;
             obj.rot = rot;
         end

@@ -30,15 +30,15 @@ ax1.Interactions = [];
 drone1 = Quadcopter(ax1);
 % 
 % % 1. In equilibrium:
-input = [0.735,0.735,0.735,0.735];
+% input = [0.735,0.735,0.735,0.735];
 
 % % 2. Free Falling
 % input = zeros(4,1);
 
 % 3. Rotation at constant altitude
-% fst = 0.1;
-% snd = 1.47 - fst;
-% input = [snd,fst,snd,fst];
+fst = 0.5;
+snd = 1.47 - fst;
+input = [snd,fst,snd,fst];
 
 m = 0.3;
 g = 9.8;
@@ -47,8 +47,8 @@ k = 1;
 L = 0.25;
 b = 0.2;
 I = [1,0,0;0,1,0;0,0,0.4];
-p = [0;0;9];
-pdot = [0;0;-10];
+p = [0;0;6];
+pdot = [0;0;0];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
 
@@ -68,10 +68,12 @@ for t = 0:dt:TOTAL_TIME
     pdot=pdot+dt*a;
     % disp([a,pdot,p])
     p=p+dt*pdot;
-    omegaFlip=flip(omega);
+    % disp(input)
+    rot=flip(theta);
+    % rot = flip(omega);
     % disp(omega)
 
-    drone1.update(p,omegaFlip);
+    drone1.update(p,rot);
     drone1.plot;
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
     

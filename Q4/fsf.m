@@ -12,15 +12,15 @@ uC = [gamma1;gamma2;gamma3;gamma4];
 xdotC = [pxd
         pyd
         pzd
-        (sin(phi)*sin(psi)*(gamma1+gamma2+gamma3+gamma4)+cos(phi)*cos(psi)*sin(theta)*(gamma1+gamma2+gamma3+gamma4)-0.2*pxd)/m
+        (cos(phi)*sin(psi)*(gamma1+gamma2+gamma3+gamma4)+cos(phi)*cos(psi)*sin(theta)*(gamma1+gamma2+gamma3+gamma4)-0.2*pxd)/m
         (cos(phi)*cos(psi)*sin(theta)*(gamma1+gamma2+gamma3+gamma4)-cos(psi)*sin(phi)*(gamma1+gamma2+gamma3+gamma4)-0.2*pyd)/m
         (cos(phi)*cos(theta)*(gamma1+gamma2+gamma3+gamma4)-0.2*pzd)/m-g
-        0.25*(gamma1-gamma3)+0.6*wy*wz
-        0.25*(gamma2-gamma4)-0.6*wx*wz
+        0.25*(gamma1-gamma3)-0.6*wy*wz
+        0.25*(gamma2-gamma4)+0.6*wx*wz
         0.5*(gamma1-gamma2+gamma3-gamma4)
         wx+sin(phi)*tan(theta)*wy+cos(phi)*tan(theta)*wz
         cos(phi)*wy-sin(phi)*wz
-        (sin(phi)*wy+cos(phi)*wz)/cos(theta)
+        sin(phi)*wy/cos(theta)+cos(phi)*wz/cos(theta)
         ];
 
 Aj = jacobian(xdotC,xC);
@@ -39,37 +39,37 @@ A = disc_sys.A;
 B = disc_sys.B;
 assert(rank(ctrb(A,B))==12) % Assert controllability of the system
 
-eigenvalues = [
-    0.8
-    0.75
-    0.76
-    0.74
-    0.62
-    0.63
-    0.44
-    0.71
-    0.73
-    0.72
-    0.81
-    0.7]; % Works pretty well
-
 % eigenvalues = [
-%     0.7
+%     0.8
 %     0.75
 %     0.76
 %     0.74
 %     0.62
 %     0.63
-%     0.64
+%     0.44
 %     0.71
 %     0.73
 %     0.72
-%     0.51
-%     0.5];
+%     0.81
+%     0.7]; % Works pretty well
+
+eigenvalues = [
+    0.7
+    0.75
+    0.76
+    0.74
+    0.62
+    0.63
+    0.64
+    0.71
+    0.73
+    0.72
+    0.51
+    0.5];
 
 % eigenvalues = rand(12,1)-1/2;
 % K = place(A,B,eigenvalues);
 
-Q=5;
-R=10;
+Q=10;
+R=20;
 K=dlqr(A,B,Q,R);
