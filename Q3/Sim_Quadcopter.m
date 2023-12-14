@@ -54,9 +54,9 @@ stageNum = 1;
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
     genCircCheckpoints(5)
-    2.5,2.5,2.5,0,0,0,0,0,0,0,0,0
-    2.5,2.5,0,0,0,0,0,0,0,0,0,0
+    genLineCheckpoints()
 ];
+
 ref = stages(1,:);
 holdTime = 0;
 elapseStart = 0;
@@ -98,7 +98,7 @@ for t = 0:dt:TOTAL_TIME
 
     % FSF controller
     u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
-    disp(transpose(u))
+    % disp(transpose(u))
 
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
@@ -123,7 +123,7 @@ for t = 0:dt:TOTAL_TIME
         theta = zeros(3,1);
     end
     x = [p(1);p(2);p(3);pdot(1);pdot(2);pdot(3);omega(1);omega(2);omega(3);theta(1);theta(2);theta(3)];
-    disp(transpose(x))
+    disp([p(3),pdot(3)])
     rot=flip(theta);
 
     drone1.update(p,rot);
@@ -163,6 +163,18 @@ function intermediateCheckpoints = genIntermediateCheckPoints(startState,endStat
         intermediateCheckpoints = [intermediateCheckpoints;newCheckpoint];
     end
 
+end
+
+function lineCheckpoints = genLineCheckpoints()
+    lineCheckpoints = [2.5,2.5,2.5,0,0,0,0,0,0,0,0,0];
+    startPoint = 2.5;
+    endPoint = 0;
+    step=-0.01;
+    for i=startPoint+step:step:endPoint-step
+        newPoint = [2.5,2.5,i,0,0,-0.1,0,0,0,0,0,0];
+        lineCheckpoints = [lineCheckpoints;newPoint];
+    end
+    lineCheckpoints = [lineCheckpoints;[2.5,2.5,0,0,0,0,0,0,0,0,0,0]];
 end
 
 function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
