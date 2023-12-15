@@ -1,10 +1,3 @@
-dt = 0.1;
-m = 0.3;
-g = 9.8;
-kd = 0.2;
-k = 1;
-L = 0.25;
-b = 0.2;
 syms px py pz pxd pyd pzd wx wy wz phi theta psi gamma1 gamma2 gamma3 gamma4
 xC = [px;py;pz;pxd;pyd;pzd;wx;wy;wz;phi;theta;psi];
 uC = [gamma1;gamma2;gamma3;gamma4];
@@ -31,44 +24,12 @@ Aj = subs(Aj,[phi,theta,psi,wx,wy,wz,gamma1,gamma2,gamma3,gamma4],[0,0,0,0,0,0,o
 A = double(Aj);
 Bj = subs(Bj,[phi,theta,psi],[0,0,0]);
 B = double(Bj);
-C = eye(12);
 D = zeros(size(B));
 cont_sys = ss(A,B,C,D);
 disc_sys = c2d(cont_sys,dt,'zoh');
 A = disc_sys.A;
 B = disc_sys.B;
 assert(rank(ctrb(A,B))==12) % Assert controllability of the system
-
-eigenvalues = [
-    0.8
-    0.75
-    0.76
-    0.74
-    0.62
-    0.63
-    0.44
-    0.71
-    0.73
-    0.72
-    0.81
-    0.7]; % Works pretty well
-
-% eigenvalues = [
-%     0.7
-%     0.75
-%     0.76
-%     0.74
-%     0.62
-%     0.63
-%     0.64
-%     0.71
-%     0.73
-%     0.72
-%     0.51
-%     0.5];
-
-% eigenvalues = rand(12,1)-1/2;
-% K = place(A,B,eigenvalues);
 
 Q=eye(12)*0.1;
 Q(1,1)=2;

@@ -30,6 +30,9 @@ ax1.Interactions = [];
 % Initialise Simulation
 drone1 = Quadcopter(ax1);
 
+C = eye(12);
+fsf() % Calculates K matrix
+
 % Drone physics constants
 m = 0.3;
 g = 9.8;
@@ -39,21 +42,15 @@ L = 0.25;
 b = 0.2;
 I = [1,0,0;0,1,0;0,0,0.4];
 
-C = eye(12);
-C(4,4)=0;
-C(5,5)=0;
-C(6,6)=0;
-fsf() % Calculates K matrix
-state_observer() % Calculates L matrix
-
 % States
-p = zeros(3,1);
-pdot = zeros(3,1);
+p = [0;0;0];
+pdot = [0;0;0];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
 x = zeros(12,1);
 xhat = zeros(12,1);
 u = zeros(4,1);
+simx = zeros(12,1);
 operatingGamma = 0.735;
 
 % Reference control
@@ -78,7 +75,7 @@ for t = 0:dt:TOTAL_TIME
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
     if stageNum <= 2 || stageNum >= height(stages)-2
-        errorThresh = 0.01;
+        errorThresh = 0.0001;
     else
         % Circle trajectory
         errorThresh = 0.01;
@@ -105,23 +102,21 @@ for t = 0:dt:TOTAL_TIME
     
     y = C*x; % Limited state observations
 
-    y = y + rand(size(y))/100; % add random measurement noise
+    % state_observer() % Given y and u calculates xhat
 
-    xhat = (A-B*K)*xhat+B*K*ref+LMat*(y-C*xhat);
+    x = xhat; % Estimate of full s
 
-    disp("XHat")
-    disp(transpose(xhat))
     % FSF controller
-    u = min(max((-K*(xhat-ref))+operatingGamma,0),1.5);
+    u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
 
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
         u = zeros(4,1);
     end
 
-    drone_physics() % Gives new state according to drone physics simulation
-    disp("X")
-    disp(transpose(x))
+    drone_physics()
+
+    rot=flip(theta);
 
     drone1.update(p,rot);
     drone1.plot;

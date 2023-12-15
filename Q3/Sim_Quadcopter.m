@@ -13,8 +13,8 @@ TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if comp
 figure;
 ax1 = axes;
 hold(ax1,'on');
-% view(ax1, 3);
-view(90,0); % for viewing YZ plane
+view(ax1, 3);
+% view(90,0); % for viewing YZ plane
 axis('equal')
 axis([-5 5 -5 5 0 10])
 axis('manual')
@@ -29,7 +29,6 @@ ax1.Interactions = [];
 
 % Initialise Simulation
 drone1 = Quadcopter(ax1);
-fsf()
 
 % Drone physics constants
 m = 0.3;
@@ -40,12 +39,17 @@ L = 0.25;
 b = 0.2;
 I = [1,0,0;0,1,0;0,0,0.4];
 
+C = eye(12);
+fsf() % Calculates K matrix
+
 % States
 p = [0;0;0];
 pdot = [0;0;0];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
 x = zeros(12,1);
+xhat = zeros(12,1);
+u = zeros(4,1);
 simx = zeros(12,1);
 operatingGamma = 0.735;
 
@@ -73,7 +77,7 @@ for t = 0:dt:TOTAL_TIME
     if stageNum <= 2 || stageNum >= height(stages)-2
         errorThresh = 0.0001;
     else
-        % CIrcle trajectory
+        % Circle trajectory
         errorThresh = 0.01;
     end
 
@@ -98,33 +102,13 @@ for t = 0:dt:TOTAL_TIME
 
     % FSF controller
     u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
-    % disp(transpose(u))
 
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
         u = zeros(4,1);
     end
 
-    % disp(calcSpeed(prev,x,dt))
-
-    % Drone physics simulation
-    omega = thetadot2omega(thetadot,theta);
-    a = acceleration(u,theta,pdot,m,g,k,kd);
-    omegadot = angular_acceleration(u,omega,I,L,b,k);
-    omega = omega+dt*omegadot;
-    thetadot=omega2thetadot(omega,theta);
-    theta=theta+dt*thetadot;
-    pdot=pdot+dt*a;
-    p=p+dt*pdot;
-    if p(3) <= 0
-        p(3) = 0;
-        pdot(3) = 0;
-        omega = zeros(3,1);
-        theta = zeros(3,1);
-    end
-    x = [p(1);p(2);p(3);pdot(1);pdot(2);pdot(3);omega(1);omega(2);omega(3);theta(1);theta(2);theta(3)];
-    disp([p(3),pdot(3)])
-    rot=flip(theta);
+    drone_physics() % Gives new state according to drone physics simulation
 
     drone1.update(p,rot);
     drone1.plot;
@@ -135,10 +119,10 @@ for t = 0:dt:TOTAL_TIME
     pause(TIME_SCALE*dt-toc); 
 end
 
-function speed=calcSpeed(prev,now,dt)
-    s = (now(1:1:3)-prev(1:1:3))/dt;
-    speed = sqrt(sum(s.^2));
-end
+% function speed=calcSpeed(prev,now,dt)
+%     s = (now(1:1:3)-prev(1:1:3))/dt;
+%     speed = sqrt(sum(s.^2));
+% end
 
 function arrived = arrivedReference(x,ref,errorThresh)
     arrived = all((x-ref).^2<errorThresh);
@@ -165,18 +149,6 @@ function intermediateCheckpoints = genIntermediateCheckPoints(startState,endStat
 
 end
 
-function lineCheckpoints = genLineCheckpoints(velocity,dt)
-    lineCheckpoints = [2.5,2.5,2.5,0,0,0,0,0,0,0,0,0];
-    startPoint = 2.5;
-    endPoint = 0;
-    step=velocity*dt;
-    for i=startPoint+step:step:endPoint-step
-        newPoint = [2.5,2.5,i,0,0,velocity,0,0,0,0,0,0];
-        lineCheckpoints = [lineCheckpoints;newPoint];
-    end
-    lineCheckpoints = [lineCheckpoints;[2.5,2.5,0,0,0,0,0,0,0,0,0,0]];
-end
-
 function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
     check1 = [0,2.5,5,0,0,0,0,0,0,0,0,0];
     check2 = [0,0,7.5,0,0,0,0,0,0,0,0,0];
@@ -196,47 +168,14 @@ function circCheckpoints=genCircCheckpoints(numPointsPerQuad)
     % disp(circCheckpoints)
 end
 
-function T = thrust(inputs,k)
-    T=[0;0;k*sum(inputs)];
-end
-
-function tau=torques(inputs,L,b,k)
-    tau=[L*k*(inputs(1)-inputs(3))
-        L*k*(inputs(2)-inputs(4))
-        b*(inputs(1)-inputs(2)+inputs(3)-inputs(4))];
-end
-
-function R=rotation(angles)
-    phi = angles(1);
-    theta = angles(2);
-    psi = angles(3);
-    R=[cos(psi)*cos(theta),cos(psi)*sin(phi)*sin(theta)-cos(phi)*sin(psi),sin(phi)*sin(psi)+cos(phi)*cos(psi)*sin(theta)
-        cos(theta)*sin(psi),cos(phi)*cos(psi)+sin(phi)*sin(psi)*sin(theta),cos(phi)*sin(psi)*sin(theta)-cos(psi)*sin(phi)
-        -sin(theta),cos(theta)*sin(phi),cos(phi)*cos(theta)
-        ];
-end
-
-function a = acceleration(inputs,angles,xdot,m,g,k,kd)
-    gravity=[0;0;-g];
-    R = rotation(angles);
-    T = R*thrust(inputs,k);
-    Fd = -kd*xdot;
-    a = gravity+T/m+Fd/m;
-end
-
-function omegadot = angular_acceleration(inputs,omega,I,L,b,k)
-    tau = torques(inputs,L,b,k);
-    omegadot = inv(I)*(tau-cross(omega,I*omega));
-end
-
-function thetadot=omega2thetadot(omega,angle)
-    phi = angle(1);
-    theta = angle(2);
-    thetadot=inv([1,0,-sin(theta);0,cos(phi),cos(theta)*sin(phi);0,-sin(phi),cos(theta)*cos(phi)])*omega;
-end
-
-function omega=thetadot2omega(thetadot,angle)
-    phi = angle(1);
-    theta = angle(2);
-    omega=[1,0,-sin(theta);0,cos(phi),cos(theta)*sin(phi);0,-sin(phi),cos(theta)*cos(phi)]*thetadot;
+function lineCheckpoints = genLineCheckpoints(velocity,dt)
+    lineCheckpoints = [2.5,2.5,2.5,0,0,0,0,0,0,0,0,0];
+    startPoint = 2.5;
+    endPoint = 0;
+    step=velocity*dt;
+    for i=startPoint+step:step:endPoint-step
+        newPoint = [2.5,2.5,i,0,0,velocity,0,0,0,0,0,0];
+        lineCheckpoints = [lineCheckpoints;newPoint];
+    end
+    lineCheckpoints = [lineCheckpoints;[2.5,2.5,0,0,0,0,0,0,0,0,0,0]];
 end
