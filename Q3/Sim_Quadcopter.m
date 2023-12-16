@@ -55,10 +55,14 @@ operatingGamma = 0.735;
 
 % Reference control
 stageNum = 1;
+circCheckPoints = genCircCheckpoints(1);
+circCheckPointsLen = height(circCheckPoints);
+landingCheckPoints = genLineCheckpoints(-0.1,dt);
+landingCheckPointsLen = height(landingCheckPoints);
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
-    genCircCheckpoints(5)
-    genLineCheckpoints(-0.1,dt)
+    circCheckPoints;
+    landingCheckPoints;
 ];
 
 ref = stages(1,:);
@@ -66,6 +70,13 @@ holdTime = 0;
 elapseStart = 0;
 firstTime = true;
 prev = x;
+
+% For plotting
+
+allStates=[];
+stageCompletionStep = [];
+step = 1;
+titles = ["X","Y","Z","X dot","Y dot","Z dot","Omega X","Omega Y","Omega Z","Phi","Theta","Psi"];
 
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
@@ -86,19 +97,27 @@ for t = 0:dt:TOTAL_TIME
         if stageNum == 1
             holdTime = 5;
             if firstTime
+                stageCompletionStep=[step];
                 elapseStart = t;
                 firstTime = false;
             end
             if (t-elapseStart) >= holdTime
-                stageNum=min(stageNum+1,height(stages));
+                stageCompletionStep=[stageCompletionStep,step];
+                stageNum=stageNum+1;
             end
         else
             stageNum=min(stageNum+1,height(stages));
-        end
-        
+            if stageNum == 3 || stageNum == 3+circCheckPointsLen || stageNum == 3+circCheckPointsLen-1
+                stageCompletionStep=[stageCompletionStep,step];
+            end
+        end 
     end
 
     ref = transpose(stages(stageNum,:));
+
+    % For plotting
+    allStates= [allStates;transpose(x)];
+    step = step+1;
 
     % FSF controller
     u = min(max((-K*(x-ref))+operatingGamma,0),1.5);
@@ -106,6 +125,8 @@ for t = 0:dt:TOTAL_TIME
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
         u = zeros(4,1);
+        close all
+        break
     end
 
     drone_physics() % Gives new state according to drone physics simulation
@@ -117,6 +138,15 @@ for t = 0:dt:TOTAL_TIME
 
     drawnow nocallbacks limitrate
     pause(TIME_SCALE*dt-toc); 
+end
+
+[r,c] = size(allStates); % get number of rows and columns of A
+for index = 1:c % columns 1 to c
+    figure(index);
+    plot(allStates(:,index))
+    hold on
+    xline(stageCompletionStep,"--r")
+    title(titles(index));
 end
 
 % function speed=calcSpeed(prev,now,dt)

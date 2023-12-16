@@ -161,14 +161,14 @@ end
 
 [r,c] = size(allStatesHat); % get number of rows and columns of A
 for index = 1:c % columns 1 to c
-    f=figure("visible","off");
+    f=figure(index,"visible","off");
     plot(allStatesHat(:,index))
     hold on
     plot(allStates(:,index))
     hold on
     xline(stageCompletionStep,"--r")
     title(titles(index));
-    saveas(f,"plots/"+titles(index),"fig")
+    saveas(f,,"fig")
 end
 
 % function speed=calcSpeed(prev,now,dt)
