@@ -4,9 +4,9 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 20;
+TOTAL_TIME  = 10;
 dt          = 0.1;
-TIME_SCALE  = 1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
+TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
 
 % Initialise plot
@@ -28,17 +28,23 @@ ax1.Interactions = [];
 
 % Initialise Simulation
 drone1 = Quadcopter(ax1);
-% 
+
 % % 1. In equilibrium:
 % input = [0.735,0.735,0.735,0.735];
+% p = [0;0;5];
+% plotFolder = "equil";
 
 % % 2. Free Falling
 % input = zeros(4,1);
+% p = [0;0;300];
+% plotFolder = "fall";
 
 % 3. Rotation at constant altitude
-fst = 0.5;
+fst = 0.1;
 snd = 1.47 - fst;
 input = [snd,fst,snd,fst];
+p = [0;0;5];
+plotFolder = "rot";
 
 m = 0.3;
 g = 9.8;
@@ -47,10 +53,14 @@ k = 1;
 L = 0.25;
 b = 0.2;
 I = [1,0,0;0,1,0;0,0,0.4];
-p = [0;0;6];
 pdot = [0;0;0];
 theta=zeros(3,1);
 thetadot = zeros(3,1);
+
+% For plotting
+
+allStates=[];
+titles = ["X","Y","Z","X dot","Y dot","Z dot","Omega X","Omega Y","Omega Z","Phi","Theta","Psi","X ddot","Y ddot","Z ddot"];
 
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
@@ -63,15 +73,19 @@ for t = 0:dt:TOTAL_TIME
     a = acceleration(input,theta,pdot,m,g,k,kd);
     omegadot = angular_acceleration(input,omega,I,L,b,k);
     omega = omega+dt*omegadot;
+    disp([omega(3),omegadot(3)])
     thetadot=omega2thetadot(omega,theta);
     theta=theta+dt*thetadot;
     pdot=pdot+dt*a;
-    % disp([a,pdot,p])
     p=p+dt*pdot;
-    % disp(input)
+    if p(3)<=0
+        p(3)=0;
+        pdot(3)=0;
+        a(3) = 0;
+    end
+    x = [p(1);p(2);p(3);pdot(1);pdot(2);pdot(3);omega(1);omega(2);omega(3);theta(1);theta(2);theta(3);a(1);a(2);a(3)];
+    allStates = [allStates;transpose(x)];
     rot=flip(theta);
-    % rot = flip(omega);
-    % disp(omega)
 
     drone1.update(p,rot);
     drone1.plot;
@@ -80,6 +94,16 @@ for t = 0:dt:TOTAL_TIME
     
     drawnow nocallbacks limitrate
     pause(TIME_SCALE*dt-toc); 
+end
+
+close all
+[r,c] = size(allStates); % get number of rows and columns of A
+for index = 1:c % columns 1 to c
+    f=figure("visible","off");
+    plot(allStates(:,index))
+    title(titles(index));
+    grid on
+    saveas(f,"plots/"+plotFolder+"/"+titles(index),"png")
 end
 
 function T = thrust(inputs,k)

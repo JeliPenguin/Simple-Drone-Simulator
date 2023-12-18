@@ -4,7 +4,7 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 500;
+TOTAL_TIME  = 1000;
 dt          = 0.1;
 TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
@@ -55,13 +55,15 @@ operatingGamma = 0.735;
 
 % Reference control
 stageNum = 1;
-circCheckPoints = genCircCheckpoints(1);
+circCheckPoints = genCircCheckpoints(30);
 circCheckPointsLen = height(circCheckPoints);
 landingCheckPoints = genLineCheckpoints(-0.1,dt);
 landingCheckPointsLen = height(landingCheckPoints);
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
     circCheckPoints;
+    1.25,2.5,5,0,0,0,0,0,0,0,0,0
+    1.25,2.5,2.5,0,0,0,0,0,0,0,0,0
     landingCheckPoints;
 ];
 
@@ -71,7 +73,9 @@ elapseStart = 0;
 firstTime = true;
 prev = x;
 
-% For plotting
+% For plotting all reference points
+% plot3(ax1,stages(:,1),stages(:,2),stages(:,3),'.','MarkerSize',20)
+
 
 allStates=[];
 stageCompletionStep = [];
@@ -85,11 +89,12 @@ for t = 0:dt:TOTAL_TIME
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
+
     if stageNum <= 2 || stageNum >= height(stages)-2
         errorThresh = 0.0001;
     else
         % Circle trajectory
-        errorThresh = 0.01;
+        errorThresh = 0.001;
     end
 
     % Adjust references
@@ -102,12 +107,12 @@ for t = 0:dt:TOTAL_TIME
                 firstTime = false;
             end
             if (t-elapseStart) >= holdTime
-                stageCompletionStep=[stageCompletionStep,step];
                 stageNum=stageNum+1;
+                stageCompletionStep=[stageCompletionStep,step];
             end
         else
             stageNum=min(stageNum+1,height(stages));
-            if stageNum == 3 || stageNum == 3+circCheckPointsLen || stageNum == 3+circCheckPointsLen-1
+            if stageNum <= 5+circCheckPointsLen
                 stageCompletionStep=[stageCompletionStep,step];
             end
         end 
@@ -140,19 +145,19 @@ for t = 0:dt:TOTAL_TIME
     pause(TIME_SCALE*dt-toc); 
 end
 
+stages = [0,0,5,0,0,0,0,0,0,0,0,0;stages];
 [r,c] = size(allStates); % get number of rows and columns of A
 for index = 1:c % columns 1 to c
-    figure(index);
+    f=figure(index);
     plot(allStates(:,index))
     hold on
-    xline(stageCompletionStep,"--r")
+    % xline(stageCompletionStep,"--r")
+    plot(stageCompletionStep,stages(1:(5+circCheckPointsLen),index),'.','MarkerSize',20)
     title(titles(index));
+    xlabel("Time step")
+    grid on
+    saveas(f,"plots/"+titles(index),"fig")
 end
-
-% function speed=calcSpeed(prev,now,dt)
-%     s = (now(1:1:3)-prev(1:1:3))/dt;
-%     speed = sqrt(sum(s.^2));
-% end
 
 function arrived = arrivedReference(x,ref,errorThresh)
     arrived = all((x-ref).^2<errorThresh);

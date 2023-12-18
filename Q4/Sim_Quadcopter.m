@@ -4,7 +4,7 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 500;
+TOTAL_TIME  = 1000;
 dt          = 0.1;
 TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
@@ -50,6 +50,8 @@ fsf() % Calculates K matrix
 state_observer() % Calculates L matrix
 
 % States
+bias = rand(1)/1000;
+awgnStd = 1/500;
 p = zeros(3,1);
 pdot = zeros(3,1);
 theta=zeros(3,1);
@@ -61,13 +63,15 @@ operatingGamma = 0.735;
 
 % Reference control
 stageNum = 1;
-circCheckPoints = genCircCheckpoints(1);
+circCheckPoints = genCircCheckpoints(30);
 circCheckPointsLen = height(circCheckPoints);
 landingCheckPoints = genLineCheckpoints(-0.1,dt);
 landingCheckPointsLen = height(landingCheckPoints);
 stages = [
     0,0,5,0,0,0,0,0,0,0,0,0
     circCheckPoints;
+    1.25,2.5,5,0,0,0,0,0,0,0,0,0
+    1.25,2.5,2.5,0,0,0,0,0,0,0,0,0
     landingCheckPoints;
 ];
 
@@ -85,6 +89,13 @@ stageCompletionStep = [];
 step = 1;
 titles = ["X","Y","Z","X dot","Y dot","Z dot","Omega X","Omega Y","Omega Z","Phi","Theta","Psi"];
 
+% Wind model init
+wU = 0;
+wV = 0;
+wW = 0;
+
+errorThresh = 0.001;
+
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
     tic
@@ -92,15 +103,8 @@ for t = 0:dt:TOTAL_TIME
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
-    if stageNum <= 2 || stageNum >= height(stages)-2
-        errorThresh = 0.01;
-    else
-        % Circle trajectory
-        errorThresh = 0.01;
-    end
-
     % Adjust references
-    if arrivedReference(x,ref,errorThresh)
+    if arrivedReference(xhat,ref,errorThresh)
         if stageNum == 1
             holdTime = 5;
             if firstTime
@@ -114,7 +118,7 @@ for t = 0:dt:TOTAL_TIME
             end
         else
             stageNum=min(stageNum+1,height(stages));
-            if stageNum == 3 || stageNum == 3+circCheckPointsLen || stageNum == 3+circCheckPointsLen-1
+            if stageNum <= 5+circCheckPointsLen
                 stageCompletionStep=[stageCompletionStep,step];
             end
         end 
@@ -122,9 +126,7 @@ for t = 0:dt:TOTAL_TIME
 
     ref = transpose(stages(stageNum,:));
     
-    y = C*x; % Limited state observations
-
-    y = y + rand(size(y))/500; % add random measurement noise
+    y = C*(x+rand(size(x))*awgnStd+bias); % Limited state observations
 
     xhat = (A-B*K)*xhat+B*K*ref+LMat*(y-C*xhat);
 
@@ -133,11 +135,11 @@ for t = 0:dt:TOTAL_TIME
     step = step+1;
 
     % disp("XHat")
-    % disp(transpose(xhat))
+    disp(transpose(xhat))
 
     % FSF controller
     u = min(max((-K*(xhat-ref))+operatingGamma,0),1.5);
-    disp((xhat-ref).')
+    % disp(u)
 
     % Switch off quadcopter when completed all stages
     if stageNum >= height(stages)
@@ -159,6 +161,7 @@ for t = 0:dt:TOTAL_TIME
     pause(TIME_SCALE*dt-toc); 
 end
 
+stages = [0,0,5,0,0,0,0,0,0,0,0,0;stages];
 [r,c] = size(allStatesHat); % get number of rows and columns of A
 for index = 1:c % columns 1 to c
     f=figure("visible","off");
@@ -166,7 +169,10 @@ for index = 1:c % columns 1 to c
     hold on
     plot(allStates(:,index))
     hold on
-    xline(stageCompletionStep,"--r")
+    % xline(stageCompletionStep,"--r")
+    plot(stageCompletionStep,stages(1:(5+circCheckPointsLen),index),'.','MarkerSize',20)
+    xlabel("Time step")
+    grid on
     title(titles(index));
     saveas(f,"plots/"+titles(index),"fig")
 end

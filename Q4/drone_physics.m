@@ -6,6 +6,15 @@ omega = omega+dt*omegadot;
 thetadot=omega2thetadot(omega,theta);
 theta=theta+dt*thetadot;
 pdot=pdot+dt*a;
+
+% Wind model
+pz = -p(3);
+if p(3)>0
+    V = norm(pdot);
+    wind_model()
+    % disp(windVec)
+    pdot = pdot + windVec;
+end
 p=p+dt*pdot;
 
 % Ground physics

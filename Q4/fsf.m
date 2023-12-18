@@ -32,14 +32,14 @@ B = disc_sys.B;
 assert(rank(ctrb(A,B))==12) % Assert controllability of the system
 
 Q=eye(12)*0.1;
-Q(1,1)=10;
-Q(2,2)=10;
-Q(3,3)=10;
+Q(1,1)=30;
+Q(2,2)=30;
+Q(3,3)=30;
 Q(4,4) = 40;
 Q(5,5) = 40;
 Q(6,6) = 40;
 Q(10,10)=20;
 Q(11,11)=20;
 Q(12,12)=20;
-R=40;
+R=20;
 K=dlqr(A,B,Q,R);

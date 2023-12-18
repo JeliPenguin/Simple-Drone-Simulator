@@ -4,7 +4,7 @@ clear all;
 close all;
 
 % Simulation parameters
-TOTAL_TIME  = 100;
+TOTAL_TIME  = 30;
 dt          = 0.1;
 TIME_SCALE  = 0.1; % slows down simulation if > 1, speeds up if < 1 (and if computation allows...)
 
@@ -15,7 +15,7 @@ ax1 = axes;
 hold(ax1,'on');
 view(ax1, 3);
 axis('equal')
-axis([-20 5 -5 5 0 10])
+axis([-5 5 -5 5 0 10])
 axis('manual')
 xlabel('x');
 ylabel('y');
@@ -62,15 +62,34 @@ Aj = subs(Aj,[phi,theta,psi,wx,wy,wz,gamma1,gamma2,gamma3,gamma4],[0,0,0,0,0,0,o
 A = double(Aj);
 Bj = subs(Bj,[phi,theta,psi],[0,0,0]);
 B = double(Bj);
-% C = eye(12);
-% D = zeros(size(B));
-% cont_sys = ss(A,B,C,D);
-% disc_sys = c2d(cont_sys,dt,'zoh');
-% A = disc_sys.A;
-% B = disc_sys.B;
+C = eye(12);
+D = zeros(size(B));
+cont_sys = ss(A,B,C,D);
+disc_sys = c2d(cont_sys,dt,'zoh');
+A = disc_sys.A;
+B = disc_sys.B;
 x = [0;0;3;0;0;0;0;0;0;0;0;0];
-p = [0;0;3];
+p = x(1:3).';
 u = zeros(4,1);
+
+plotFolder = "q2/";
+
+% % No Error
+% error = 0;
+% plotFolder = plotFolder+"equil";
+% 
+% % Small Error
+% error = 0.00001;
+% plotFolder = plotFolder+"smallError";
+
+% Large Error
+error = 0.1;
+plotFolder = plotFolder+"largeError";
+
+x(11) = x(11)+error;
+
+allStates=[];
+titles = ["X","Y","Z","X dot","Y dot","Z dot","Omega X","Omega Y","Omega Z","Phi","Theta","Psi"];
 
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
@@ -79,28 +98,12 @@ for t = 0:dt:TOTAL_TIME
 
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
 
-    % xdot = A*x+B*u;
-    % x = x + dt*xdot;
+    x = A*x;
+    disp(x.')
+    p = [x(1),x(2),x(3)];
+    theta = [x(12),x(11),x(10)];
 
-    % Equilibrium Case
-    x = expm(A*dt)*x;
-
-    % % Small error case
-    % x = x -0.00001;
-
-    % Large error case
-    x = x -0.1;
-
-    if p(3)<=0
-        p(3)=0;
-        theta = zeros(3,1);
-    else
-        p = [x(1),x(2),x(3)];
-        theta = [x(12),x(11),x(10)];
-    end
-
-    disp(p)
-
+    allStates = [allStates;transpose(x)];
     drone1.update(p,theta);
     drone1.plot;
     % _______ IMPLEMENT CONTROLLER + SIMULATION PHYSICS HERE ______ %
@@ -109,3 +112,28 @@ for t = 0:dt:TOTAL_TIME
     drawnow nocallbacks limitrate
     pause(TIME_SCALE*dt-toc); 
 end
+
+close all
+[r,c] = size(allStates); % get number of rows and columns of A
+for index = 1:c % columns 1 to c
+    f=figure("Visible","off");
+    plot(allStates(:,index))
+    title(titles(index));
+    xlabel("Timestep")
+    grid on
+    hold on
+    saveas(f,"plots/"+plotFolder+"/"+titles(index),"fig")
+end
+
+f1=figure;
+yText = 2;
+for index = 1:c % columns 1 to c
+    plot(allStates(:,index))
+    % text(150,yText,titles(index)+": "+num2str(allStates(end,index)))
+    yText = yText - 0.1;
+    hold on
+end
+title("Small Error Scenario");
+xlabel("Timestep")
+grid on
+legend(titles)
