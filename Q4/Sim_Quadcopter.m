@@ -94,7 +94,7 @@ wU = 0;
 wV = 0;
 wW = 0;
 
-errorThresh = 0.001;
+errorThresh = 0.005;
 
 % Run Simulation
 for t = 0:dt:TOTAL_TIME
